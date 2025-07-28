@@ -1,0 +1,21 @@
+{
+  "name": "element-barcode-input",
+  "version": "1.0.0",
+  "description": "Barcode input component for Element UI",
+  "main": "index.js",
+  "keywords": [
+    "element-ui",
+    "vue",
+    "barcode",
+    "input",
+    "component"
+  ],
+  "author": "Element UI Team",
+  "license": "MIT",
+  "dependencies": {
+    "element-ui": "^2.15.1"
+  },
+  "peerDependencies": {
+    "vue": "^2.5.17"
+  }
+}

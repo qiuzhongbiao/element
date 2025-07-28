@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>条码输入框组件演示</title>
+  
+  <!-- Element UI CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.1/lib/theme-chalk/index.css">
+  
+  <style>
+    body {
+      font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, 'Microsoft YaHei', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    .demo-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+    }
+    
+    .demo-section {
+      margin-bottom: 40px;
+      padding-bottom: 30px;
+      border-bottom: 1px solid #ebeef5;
+    }
+    
+    .demo-section:last-child {
+      border-bottom: none;
+    }
+    
+    .demo-title {
+      color: #303133;
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    
+    .demo-subtitle {
+      color: #409EFF;
+      font-size: 18px;
+      margin: 20px 0 15px 0;
+    }
+    
+    .demo-description {
+      color: #606266;
+      font-size: 14px;
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    
+    .status-display {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+    
+    .feature-card {
+      border: 1px solid #ebeef5;
+      border-radius: 4px;
+      padding: 20px;
+    }
+    
+    .feature-card h4 {
+      color: #303133;
+      margin-top: 0;
+      margin-bottom: 15px;
+    }
+    
+    .code-example {
+      background-color: #f8f8f8;
+      border: 1px solid #ebeef5;
+      border-radius: 4px;
+      padding: 15px;
+      margin: 15px 0;
+      font-family: 'Monaco', 'Consolas', monospace;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+    
+    .event-log {
+      background-color: #f9f9f9;
+      border: 1px solid #ebeef5;
+      border-radius: 4px;
+      padding: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    
+    .event-item {
+      margin: 2px 0;
+      padding: 2px 5px;
+      border-radius: 2px;
+    }
+    
+    .event-item.scan { background-color: #e1f3ff; }
+    .event-item.copy { background-color: #fff2e8; }
+    .event-item.history { background-color: #f0f9ff; }
+    .event-item.clear { background-color: #fef0f0; }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .stat-card {
+      text-align: center;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+    
+    .stat-number {
+      font-size: 24px;
+      font-weight: bold;
+      color: #409EFF;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #909399;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="demo-container">
+      <h1 class="demo-title">条码输入框组件演示</h1>
+      <p class="demo-description">
+        基于 Element UI 2.15.1 和 Vue 2 的专业条码输入框组件，支持多种条码类型验证、扫码识别、历史记录等功能。
+      </p>
+      
+      <!-- 基础功能演示 -->
+      <div class="demo-section">
+        <h2 class="demo-subtitle">基础功能演示</h2>
+        <el-form :model="basicForm" label-width="120px">
+          <el-form-item label="包体码">
+            <el-barcode-input
+              v-model="basicForm.packageCode"
+              barcode-type="package"
+              placeholder="请输入或扫描包体码"
+              autofocus
+              @scan-complete="logEvent('scan', '包体码扫描完成', $event)"
+              @copy="logEvent('copy', '包体码复制', $event)"
+              @clear="logEvent('clear', '包体码清空')"
+            />
+          </el-form-item>
+          
+          <el-form-item label="状态">
+            <div class="status-display">
+              <el-tag :type="getStatusType(basicForm.packageCode, 'package')">
+                {{ getStatusText(basicForm.packageCode, 'package') }}
+              </el-tag>
+              <span v-if="basicForm.packageCode">
+                字符数: {{ basicForm.packageCode.length }}/16
+              </span>
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+      
+      <!-- 多种条码类型 -->
+      <div class="demo-section">
+        <h2 class="demo-subtitle">多种条码类型支持</h2>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h4>电芯码 (12位)</h4>
+            <el-barcode-input
+              v-model="multiForm.cellCode"
+              barcode-type="cell"
+              placeholder="电芯厂商+型号+批次+检验"
+              size="small"
+              @scan-complete="logEvent('scan', '电芯码扫描完成', $event)"
+            />
+            <div class="status-display">
+              <el-tag :type="getStatusType(multiForm.cellCode, 'cell')" size="mini">
+                {{ getStatusText(multiForm.cellCode, 'cell') }}
+              </el-tag>
+            </div>
+          </div>
+          
+          <div class="feature-card">
+            <h4>模组码 (14位)</h4>
+            <el-barcode-input
+              v-model="multiForm.moduleCode"
+              barcode-type="module"
+              placeholder="模组类型+厂商+日期+序列"
+              size="small"
+              @scan-complete="logEvent('scan', '模组码扫描完成', $event)"
+            />
+            <div class="status-display">
+              <el-tag :type="getStatusType(multiForm.moduleCode, 'module')" size="mini">
+                {{ getStatusText(multiForm.moduleCode, 'module') }}
+              </el-tag>
+            </div>
+          </div>
+          
+          <div class="feature-card">
+            <h4>客户码 (8-20位)</h4>
+            <el-barcode-input
+              v-model="multiForm.customerCode"
+              barcode-type="customer"
+              placeholder="客户+产品+自定义字段"
+              size="small"
+              @scan-complete="logEvent('scan', '客户码扫描完成', $event)"
+            />
+            <div class="status-display">
+              <el-tag :type="getStatusType(multiForm.customerCode, 'customer')" size="mini">
+                {{ getStatusText(multiForm.customerCode, 'customer') }}
+              </el-tag>
+            </div>
+          </div>
+          
+          <div class="feature-card">
+            <h4>自定义规则</h4>
+            <el-barcode-input
+              v-model="multiForm.customCode"
+              :custom-rule="customRule"
+              placeholder="SN + 10位数字"
+              size="small"
+              @scan-complete="logEvent('scan', '序列号扫描完成', $event)"
+            />
+            <div class="status-display">
+              <el-tag :type="getCustomStatusType()" size="mini">
+                {{ getCustomStatusText() }}
+              </el-tag>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 高级功能演示 -->
+      <div class="demo-section">
+        <h2 class="demo-subtitle">高级功能演示</h2>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <h4>扫码识别与防抖</h4>
+            <el-barcode-input
+              v-model="advancedForm.scanCode"
+              barcode-type="package"
+              :debounce-delay="500"
+              :scan-interval="30"
+              placeholder="试试快速输入模拟扫码"
+              @scan-input="logEvent('scan', '检测到扫码输入', $event)"
+              @scan-complete="logEvent('scan', '扫码识别完成', $event)"
+            />
+            
+            <el-button-group style="margin-top: 10px;">
+              <el-button size="mini" @click="simulateScan">模拟扫码</el-button>
+              <el-button size="mini" @click="simulateManualInput">模拟手动输入</el-button>
+            </el-button-group>
+          </el-col>
+          
+          <el-col :span="12">
+            <h4>历史记录管理</h4>
+            <el-barcode-input
+              v-model="advancedForm.historyCode"
+              barcode-type="cell"
+              :max-history="5"
+              placeholder="输入后会自动保存到历史"
+              @history-select="logEvent('history', '选择历史记录', $event)"
+              @history-add="logEvent('history', '添加到历史', $event)"
+              @history-clear="logEvent('history', '清空历史记录')"
+            />
+          </el-col>
+        </el-row>
+      </div>
+      
+      <!-- 功能控制 -->
+      <div class="demo-section">
+        <h2 class="demo-subtitle">功能控制</h2>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <h4>功能开关</h4>
+            <el-form size="mini">
+              <el-form-item label="显示复制按钮">
+                <el-switch v-model="controlSettings.showCopy"></el-switch>
+              </el-form-item>
+              <el-form-item label="显示历史记录">
+                <el-switch v-model="controlSettings.showHistory"></el-switch>
+              </el-form-item>
+              <el-form-item label="显示帮助提示">
+                <el-switch v-model="controlSettings.showHelp"></el-switch>
+              </el-form-item>
+              <el-form-item label="显示字符计数">
+                <el-switch v-model="controlSettings.showCharCount"></el-switch>
+              </el-form-item>
+            </el-form>
+          </el-col>
+          
+          <el-col :span="12">
+            <h4>效果预览</h4>
+            <el-barcode-input
+              v-model="controlForm.testCode"
+              barcode-type="module"
+              :show-copy="controlSettings.showCopy"
+              :show-history="controlSettings.showHistory"
+              :show-help="controlSettings.showHelp"
+              :show-char-count="controlSettings.showCharCount"
+              placeholder="根据左侧设置查看效果"
+            />
+          </el-col>
+        </el-row>
+      </div>
+      
+      <!-- 事件日志和统计 -->
+      <div class="demo-section">
+        <h2 class="demo-subtitle">事件监控</h2>
+        
+        <el-row :gutter="20">
+          <el-col :span="16">
+            <h4>事件日志</h4>
+            <div class="event-log">
+              <div 
+                v-for="(event, index) in eventLog" 
+                :key="index"
+                :class="['event-item', event.type]">
+                [{{ event.time }}] {{ event.message }} 
+                <span v-if="event.data">: {{ event.data }}</span>
+              </div>
+            </div>
+            <el-button size="mini" @click="clearEventLog" style="margin-top: 10px;">
+              清空日志
+            </el-button>
+          </el-col>
+          
+          <el-col :span="8">
+            <h4>统计信息</h4>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-number">{{ statistics.totalScans }}</div>
+                <div class="stat-label">扫码次数</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number">{{ statistics.totalCopies }}</div>
+                <div class="stat-label">复制次数</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number">{{ statistics.historySelections }}</div>
+                <div class="stat-label">历史选择</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number">{{ statistics.clearActions }}</div>
+                <div class="stat-label">清空操作</div>
+              </div>
+            </div>
+          </el-col>
+        </el-row>
+      </div>
+      
+      <!-- 快速测试 -->
+      <div class="demo-section">
+        <h2 class="demo-subtitle">快速测试</h2>
+        <p class="demo-description">点击按钮快速填入各种测试数据</p>
+        
+        <el-button-group>
+          <el-button type="primary" @click="setValidCodes">设置有效条码</el-button>
+          <el-button type="warning" @click="setInvalidCodes">设置无效条码</el-button>
+          <el-button type="info" @click="setPartialCodes">设置部分输入</el-button>
+          <el-button type="danger" @click="clearAllCodes">清空所有</el-button>
+        </el-button-group>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vue 2 -->
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <!-- Element UI -->
+  <script src="https://unpkg.com/element-ui@2.15.1/lib/index.js"></script>
+  <!-- throttle-debounce -->
+  <script src="https://unpkg.com/throttle-debounce@2.3.0/umd/index.js"></script>
+
+  <script>
+    // 模拟条码输入框组件（简化版本，实际项目中应该导入完整组件）
+    Vue.component('el-barcode-input', {
+      template: `
+        <div class="el-barcode-input" :class="wrapperClass">
+          <input 
+            ref="input"
+            class="el-input__inner"
+            :value="value"
+            :placeholder="placeholder"
+            :disabled="disabled"
+            :readonly="readonly"
+            @input="handleInput"
+            @focus="handleFocus"
+            @blur="handleBlur"
+            @keydown="handleKeydown"
+            :style="{ 
+              borderColor: getBorderColor(),
+              transition: 'border-color 0.2s'
+            }"
+          />
+          <span v-if="getSuffixVisible()" class="el-input__suffix" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 5px;">
+            <i v-if="showCopy && value" class="el-icon-document-copy" @click="handleCopy" style="cursor: pointer;" title="复制"></i>
+            <i v-if="clearable && value" class="el-icon-circle-close" @click="clear" style="cursor: pointer;" title="清空"></i>
+            <i v-if="showHistory && historyList.length > 0" class="el-icon-time" @click="toggleHistory" style="cursor: pointer;" title="历史记录"></i>
+            <el-tooltip v-if="showHelp && barcodeRule" :content="helpContent" placement="top">
+              <i class="el-icon-question" style="cursor: help;"></i>
+            </el-tooltip>
+          </span>
+          <div v-if="showCharCount" style="position: absolute; right: 0; top: 100%; margin-top: 2px; font-size: 12px; color: #909399;">
+            字符数: {{ textLength }}
+            <span v-if="barcodeRule && barcodeRule.length" style="color: #67C23A;">
+              ({{ barcodeRule.length.min }}-{{ barcodeRule.length.max }})
+            </span>
+          </div>
+          <div v-if="showHistoryDropdown" style="position: absolute; top: 100%; left: 0; right: 0; z-index: 1000; background: white; border: 1px solid #E4E7ED; border-radius: 4px; box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1); max-height: 200px; overflow-y: auto; margin-top: 5px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid #EBEEF5; font-size: 12px; color: #909399;">
+              <span>历史记录</span>
+              <i class="el-icon-delete" @click="clearHistory" style="cursor: pointer;" title="清空历史"></i>
+            </div>
+            <div 
+              v-for="(item, index) in historyList" 
+              :key="index"
+              @click="selectHistory(item)"
+              style="padding: 8px 12px; cursor: pointer; transition: background-color 0.3s; display: flex; justify-content: space-between;"
+              @mouseenter="$event.target.style.backgroundColor = '#F5F7FA'"
+              @mouseleave="$event.target.style.backgroundColor = 'transparent'">
+              <span style="font-size: 13px; color: #303133;">{{ item }}</span>
+              <span style="font-size: 11px; color: #C0C4CC;">刚刚</span>
+            </div>
+          </div>
+        </div>
+      `,
+      props: {
+        value: [String, Number],
+        barcodeType: { type: String, default: 'package' },
+        customRule: { type: Object, default: null },
+        placeholder: String,
+        disabled: Boolean,
+        readonly: Boolean,
+        clearable: { type: Boolean, default: true },
+        showCopy: { type: Boolean, default: true },
+        showHistory: { type: Boolean, default: true },
+        showHelp: { type: Boolean, default: true },
+        showCharCount: { type: Boolean, default: true },
+        autofocus: Boolean,
+        size: String,
+        debounceDelay: { type: Number, default: 300 },
+        scanInterval: { type: Number, default: 50 },
+        maxHistory: { type: Number, default: 10 }
+      },
+      data() {
+        return {
+          focused: false,
+          historyList: [],
+          showHistoryDropdown: false,
+          lastInputTime: 0,
+          BARCODE_RULES: {
+            package: {
+              name: '包体码',
+              pattern: /^[A-Z0-9]{16}$/,
+              length: { min: 16, max: 16 },
+              format: [
+                { range: '1-4', description: '生产厂商代码' },
+                { range: '5-8', description: '产品型号代码' },
+                { range: '9-12', description: '生产日期代码' },
+                { range: '13-16', description: '流水号' }
+              ]
+            },
+            cell: {
+              name: '电芯码',
+              pattern: /^[A-Z0-9]{12}$/,
+              length: { min: 12, max: 12 },
+              format: [
+                { range: '1-3', description: '电芯厂商代码' },
+                { range: '4-6', description: '电芯型号代码' },
+                { range: '7-10', description: '生产批次号' },
+                { range: '11-12', description: '检验码' }
+              ]
+            },
+            module: {
+              name: '模组码',
+              pattern: /^[A-Z0-9]{14}$/,
+              length: { min: 14, max: 14 },
+              format: [
+                { range: '1-2', description: '模组类型代码' },
+                { range: '3-6', description: '生产厂商代码' },
+                { range: '7-10', description: '生产日期代码' },
+                { range: '11-14', description: '序列号' }
+              ]
+            },
+            customer: {
+              name: '客户码',
+              pattern: /^[A-Z0-9]{8,20}$/,
+              length: { min: 8, max: 20 },
+              format: [
+                { range: '1-4', description: '客户代码' },
+                { range: '5-8', description: '产品代码' },
+                { range: '9-*', description: '自定义字段' }
+              ]
+            }
+          }
+        };
+      },
+      computed: {
+        wrapperClass() {
+          return {
+            'is-focused': this.focused,
+            'is-valid': this.isValid,
+            'is-invalid': !this.isValid && this.value,
+            [`el-input--${this.size}`]: this.size
+          };
+        },
+        barcodeRule() {
+          return this.customRule || this.BARCODE_RULES[this.barcodeType] || this.BARCODE_RULES.package;
+        },
+        isValid() {
+          if (!this.value) return true;
+          return this.barcodeRule.pattern.test(this.value);
+        },
+        textLength() {
+          return (this.value || '').length;
+        },
+        helpContent() {
+          if (!this.barcodeRule || !this.barcodeRule.format) return '';
+          return this.barcodeRule.format
+            .map(item => `\${item.range}: \${item.description}`)
+            .join('\\n');
+        }
+      },
+      mounted() {
+        if (this.autofocus) {
+          this.$refs.input.focus();
+        }
+        this.loadHistory();
+        document.addEventListener('click', this.handleDocumentClick);
+      },
+      beforeDestroy() {
+        document.removeEventListener('click', this.handleDocumentClick);
+      },
+      methods: {
+        handleInput(event) {
+          const value = event.target.value;
+          const now = Date.now();
+          
+          if (now - this.lastInputTime < this.scanInterval) {
+            this.$emit('scan-input', value);
+            this.debounceCheck(value);
+          }
+          
+          this.lastInputTime = now;
+          this.$emit('input', value);
+        },
+        debounceCheck: _.debounce(function(value) {
+          if (this.isValid) {
+            this.addToHistory(value);
+            this.$emit('scan-complete', value);
+          }
+        }, 300),
+        handleFocus() {
+          this.focused = true;
+          this.$emit('focus');
+        },
+        handleBlur() {
+          this.focused = false;
+          this.showHistoryDropdown = false;
+          this.$emit('blur');
+        },
+        handleKeydown(event) {
+          if (event.key === 'Escape') {
+            this.clear();
+            event.preventDefault();
+          }
+        },
+        clear() {
+          this.$emit('input', '');
+          this.$emit('clear');
+          this.$refs.input.focus();
+        },
+        async handleCopy() {
+          if (!this.value) return;
+          try {
+            await navigator.clipboard.writeText(this.value);
+            this.$message.success('复制成功');
+            this.$emit('copy', this.value);
+          } catch (err) {
+            this.$message.error('复制失败');
+          }
+        },
+        toggleHistory() {
+          this.showHistoryDropdown = !this.showHistoryDropdown;
+        },
+        selectHistory(value) {
+          this.$emit('input', value);
+          this.showHistoryDropdown = false;
+          this.$refs.input.focus();
+          this.$emit('history-select', value);
+        },
+        addToHistory(value) {
+          if (!value || this.historyList.includes(value)) return;
+          this.historyList.unshift(value);
+          if (this.historyList.length > this.maxHistory) {
+            this.historyList = this.historyList.slice(0, this.maxHistory);
+          }
+          this.saveHistory();
+          this.$emit('history-add', value);
+        },
+        clearHistory() {
+          this.historyList = [];
+          this.saveHistory();
+          this.showHistoryDropdown = false;
+          this.$emit('history-clear');
+        },
+        loadHistory() {
+          try {
+            const stored = localStorage.getItem(`barcode-history-${this.barcodeType}`);
+            if (stored) {
+              this.historyList = JSON.parse(stored);
+            }
+          } catch (e) {
+            console.warn('Failed to load history:', e);
+          }
+        },
+        saveHistory() {
+          try {
+            localStorage.setItem(
+              `barcode-history-${this.barcodeType}`, 
+              JSON.stringify(this.historyList)
+            );
+          } catch (e) {
+            console.warn('Failed to save history:', e);
+          }
+        },
+        handleDocumentClick(event) {
+          if (!this.$el.contains(event.target)) {
+            this.showHistoryDropdown = false;
+          }
+        },
+        getSuffixVisible() {
+          return this.showCopy || this.clearable || this.showHistory || this.showHelp;
+        },
+        getBorderColor() {
+          if (this.focused) return '#409EFF';
+          if (!this.value) return '#DCDFE6';
+          return this.isValid ? '#67C23A' : '#F56C6C';
+        }
+      }
+    });
+
+    new Vue({
+      el: '#app',
+      data: {
+        basicForm: {
+          packageCode: ''
+        },
+        multiForm: {
+          cellCode: '',
+          moduleCode: '',
+          customerCode: '',
+          customCode: ''
+        },
+        advancedForm: {
+          scanCode: '',
+          historyCode: ''
+        },
+        controlForm: {
+          testCode: ''
+        },
+        controlSettings: {
+          showCopy: true,
+          showHistory: true,
+          showHelp: true,
+          showCharCount: true
+        },
+        customRule: {
+          name: '序列号码',
+          pattern: /^SN[0-9]{10}$/,
+          length: { min: 12, max: 12 },
+          format: [
+            { range: '1-2', description: '产品标识' },
+            { range: '3-12', description: '序列号' }
+          ]
+        },
+        eventLog: [],
+        statistics: {
+          totalScans: 0,
+          totalCopies: 0,
+          historySelections: 0,
+          clearActions: 0
+        }
+      },
+      methods: {
+        getStatusType(value, type) {
+          if (!value) return 'info';
+          const rules = {
+            package: /^[A-Z0-9]{16}$/,
+            cell: /^[A-Z0-9]{12}$/,
+            module: /^[A-Z0-9]{14}$/,
+            customer: /^[A-Z0-9]{8,20}$/
+          };
+          return rules[type].test(value) ? 'success' : 'danger';
+        },
+        getStatusText(value, type) {
+          if (!value) return '未输入';
+          const rules = {
+            package: /^[A-Z0-9]{16}$/,
+            cell: /^[A-Z0-9]{12}$/,
+            module: /^[A-Z0-9]{14}$/,
+            customer: /^[A-Z0-9]{8,20}$/
+          };
+          return rules[type].test(value) ? '格式正确' : '格式错误';
+        },
+        getCustomStatusType() {
+          if (!this.multiForm.customCode) return 'info';
+          return this.customRule.pattern.test(this.multiForm.customCode) ? 'success' : 'danger';
+        },
+        getCustomStatusText() {
+          if (!this.multiForm.customCode) return '未输入';
+          return this.customRule.pattern.test(this.multiForm.customCode) ? '格式正确' : '格式错误';
+        },
+        logEvent(type, message, data) {
+          this.eventLog.unshift({
+            type,
+            message,
+            data: data || '',
+            time: new Date().toLocaleTimeString()
+          });
+          
+          if (this.eventLog.length > 50) {
+            this.eventLog = this.eventLog.slice(0, 50);
+          }
+          
+          // 更新统计
+          if (type === 'scan') this.statistics.totalScans++;
+          if (type === 'copy') this.statistics.totalCopies++;
+          if (type === 'history') this.statistics.historySelections++;
+          if (type === 'clear') this.statistics.clearActions++;
+        },
+        clearEventLog() {
+          this.eventLog = [];
+        },
+        simulateScan() {
+          const example = 'ABCD1234' + new Date().toISOString().slice(2, 10).replace(/-/g, '');
+          this.advancedForm.scanCode = '';
+          
+          let index = 0;
+          const timer = setInterval(() => {
+            this.advancedForm.scanCode += example[index];
+            index++;
+            if (index >= example.length) {
+              clearInterval(timer);
+              this.logEvent('scan', '模拟扫码完成', example);
+            }
+          }, 20);
+        },
+        simulateManualInput() {
+          this.advancedForm.scanCode = 'MANUAL123456789';
+          this.logEvent('scan', '模拟手动输入');
+        },
+        setValidCodes() {
+          this.basicForm.packageCode = 'ABCD12342312001';
+          this.multiForm.cellCode = 'ABC123231201';
+          this.multiForm.moduleCode = 'AB123423120001';
+          this.multiForm.customerCode = 'CUST12345678';
+          this.multiForm.customCode = 'SN2023120001';
+          this.logEvent('scan', '设置有效条码');
+        },
+        setInvalidCodes() {
+          this.basicForm.packageCode = 'abcd123'; // 小写和长度不对
+          this.multiForm.cellCode = 'abc123'; // 小写和长度不对
+          this.multiForm.moduleCode = 'ab123'; // 小写和长度不对
+          this.multiForm.customerCode = 'cust'; // 小写和长度不对
+          this.multiForm.customCode = 'sn123'; // 小写和格式不对
+          this.logEvent('scan', '设置无效条码');
+        },
+        setPartialCodes() {
+          this.basicForm.packageCode = 'ABCD1234';
+          this.multiForm.cellCode = 'ABC123';
+          this.multiForm.moduleCode = 'AB1234';
+          this.multiForm.customerCode = 'CUST';
+          this.multiForm.customCode = 'SN12';
+          this.logEvent('scan', '设置部分输入');
+        },
+        clearAllCodes() {
+          this.basicForm.packageCode = '';
+          this.multiForm.cellCode = '';
+          this.multiForm.moduleCode = '';
+          this.multiForm.customerCode = '';
+          this.multiForm.customCode = '';
+          this.advancedForm.scanCode = '';
+          this.advancedForm.historyCode = '';
+          this.controlForm.testCode = '';
+          this.logEvent('clear', '清空所有条码');
+        }
+      }
+    });
+  </script>
+</body>
+</html>

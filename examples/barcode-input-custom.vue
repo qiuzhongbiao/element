@@ -16,10 +16,9 @@
         <el-barcode-input
           ref="barcodeInput"
           v-model="form.customCode"
-          :custom-rule="currentRule"
-          :placeholder="currentRule.placeholder"
-          :debounce-delay="500"
-          :max-history="5"
+                     :custom-rule="currentRule"
+           :placeholder="currentRule.placeholder"
+           :max-history="5"
           size="large"
           @scan-complete="handleScanComplete"
           @input="handleInput"

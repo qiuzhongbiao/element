@@ -253,16 +253,15 @@
         
         <el-row :gutter="20">
           <el-col :span="12">
-            <h4>扫码识别与防抖</h4>
-            <el-barcode-input
-              v-model="advancedForm.scanCode"
-              barcode-type="package"
-              :debounce-delay="500"
-              :scan-interval="30"
-              placeholder="试试快速输入模拟扫码"
-              @scan-input="logEvent('scan', '检测到扫码输入', $event)"
-              @scan-complete="logEvent('scan', '扫码识别完成', $event)"
-            />
+            <h4>扫码识别</h4>
+                         <el-barcode-input
+               v-model="advancedForm.scanCode"
+               barcode-type="package"
+               :scan-interval="30"
+               placeholder="试试快速输入模拟扫码"
+               @scan-input="logEvent('scan', '检测到扫码输入', $event)"
+               @scan-complete="logEvent('scan', '扫码识别完成', $event)"
+             />
             
             <el-button-group style="margin-top: 10px;">
               <el-button size="mini" @click="simulateScan">模拟扫码</el-button>
@@ -387,8 +386,6 @@
   <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
   <!-- Element UI -->
   <script src="https://unpkg.com/element-ui@2.15.1/lib/index.js"></script>
-  <!-- throttle-debounce -->
-  <script src="https://unpkg.com/throttle-debounce@2.3.0/umd/index.js"></script>
 
   <script>
     // 模拟条码输入框组件（简化版本，实际项目中应该导入完整组件）
@@ -455,10 +452,9 @@
         showHistory: { type: Boolean, default: true },
         showHelp: { type: Boolean, default: true },
         showCharCount: { type: Boolean, default: true },
-        autofocus: Boolean,
-        size: String,
-        debounceDelay: { type: Number, default: 300 },
-        scanInterval: { type: Number, default: 50 },
+                 autofocus: Boolean,
+         size: String,
+         scanInterval: { type: Number, default: 50 },
         maxHistory: { type: Number, default: 10 }
       },
       data() {
@@ -555,20 +551,19 @@
           const value = event.target.value;
           const now = Date.now();
           
-          if (now - this.lastInputTime < this.scanInterval) {
-            this.$emit('scan-input', value);
-            this.debounceCheck(value);
-          }
+                     if (now - this.lastInputTime < this.scanInterval) {
+             this.$emit('scan-input', value);
+             // 立即处理扫描完成
+             if (this.isValid) {
+               this.addToHistory(value);
+               this.$emit('scan-complete', value);
+             }
+           }
           
           this.lastInputTime = now;
           this.$emit('input', value);
         },
-        debounceCheck: _.debounce(function(value) {
-          if (this.isValid) {
-            this.addToHistory(value);
-            this.$emit('scan-complete', value);
-          }
-        }, 300),
+        
         handleFocus() {
           this.focused = true;
           this.$emit('focus');

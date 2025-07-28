@@ -143,7 +143,6 @@
 <script>
   import emitter from 'element-ui/src/mixins/emitter';
   import Migrating from 'element-ui/src/mixins/migrating';
-  import { debounce } from 'throttle-debounce';
 
   // 条码类型规则配置
   const BARCODE_RULES = {
@@ -219,9 +218,7 @@
         currentValue: this.value || '',
         historyList: [],
         showHistoryDropdown: false,
-        scanDebounceTimer: null,
-        lastScanTime: 0,
-        historyStorage: []
+        lastScanTime: 0
       };
     },
 
@@ -299,11 +296,7 @@
         type: Boolean,
         default: false
       },
-      // 防抖延迟(ms)
-      debounceDelay: {
-        type: Number,
-        default: 300
-      },
+
       // 扫描间隔检测(ms)
       scanInterval: {
         type: Number,
@@ -415,8 +408,6 @@
     created() {
       this.$on('inputSelect', this.select);
       this.loadHistory();
-      // 创建防抖函数
-      this.debouncedScan = debounce(this.debounceDelay, this.handleScanComplete);
     },
 
     mounted() {
@@ -428,12 +419,9 @@
       document.addEventListener('click', this.handleDocumentClick);
     },
 
-    beforeDestroy() {
-      document.removeEventListener('click', this.handleDocumentClick);
-      if (this.scanDebounceTimer) {
-        clearTimeout(this.scanDebounceTimer);
-      }
-    },
+          beforeDestroy() {
+        document.removeEventListener('click', this.handleDocumentClick);
+      },
 
     methods: {
       focus() {
@@ -503,25 +491,17 @@
         this.currentValue = value;
         this.$emit('input', value);
       },
-      handleScanInput(value) {
-        // 清除之前的定时器
-        if (this.scanDebounceTimer) {
-          clearTimeout(this.scanDebounceTimer);
-        }
-        
-        this.currentValue = value;
-        this.$emit('input', value);
-        this.$emit('scan-input', value);
-        
-        // 防抖处理扫描完成
-        this.debouncedScan(value);
-      },
-      handleScanComplete(value) {
-        if (this.isValid) {
-          this.addToHistory(value);
-          this.$emit('scan-complete', value);
-        }
-      },
+              handleScanInput(value) {
+          this.currentValue = value;
+          this.$emit('input', value);
+          this.$emit('scan-input', value);
+          
+          // 立即处理扫描完成
+          if (this.isValid) {
+            this.addToHistory(value);
+            this.$emit('scan-complete', value);
+          }
+        },
       handleChange(event) {
         this.$emit('change', event.target.value);
       },

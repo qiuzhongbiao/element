@@ -9,7 +9,7 @@
 - ✅ **一键复制**: 支持一键复制条码内容，兼容不同浏览器
 - ✅ **输入限制**: 根据条码类型自动限制输入格式
 - ✅ **历史记录**: 自动保存扫描历史，支持快速选择
-- ✅ **防抖扫描**: 智能识别扫码枪输入，防抖处理避免误触发
+- ✅ **扫描识别**: 智能识别扫码枪输入，实时处理扫描事件
 - ✅ **视觉反馈**: 实时显示输入状态，不同颜色标识有效性
 - ✅ **格式校验**: 内置多种条码类型的正则校验
 - ✅ **字符计数**: 实时显示字符数和格式要求
@@ -115,14 +115,13 @@ export default {
 
 ```vue
 <template>
-  <el-barcode-input
-    v-model="barcode"
-    barcode-type="package"
-    :debounce-delay="300"
-    :scan-interval="50"
-    @scan-input="handleScanInput"
-    @scan-complete="handleScanComplete"
-  />
+     <el-barcode-input
+     v-model="barcode"
+     barcode-type="package"
+     :scan-interval="50"
+     @scan-input="handleScanInput"
+     @scan-complete="handleScanComplete"
+   />
 </template>
 
 <script>
@@ -194,7 +193,6 @@ export default {
 | show-history | 显示历史记录 | boolean | — | true |
 | show-help | 显示帮助提示 | boolean | — | true |
 | show-char-count | 显示字符计数 | boolean | — | true |
-| debounce-delay | 防抖延迟时间(ms) | number | — | 300 |
 | scan-interval | 扫描间隔检测(ms) | number | — | 50 |
 | max-history | 历史记录最大条数 | number | — | 10 |
 
@@ -298,13 +296,13 @@ A: 通过对应的 props 控制：
 - `show-char-count="false"` 禁用字符计数
 
 ### Q: 如何处理扫码枪输入？
-A: 组件会自动检测快速输入（通过 `scan-interval` 参数控制），并触发 `scan-input` 和 `scan-complete` 事件。
+A: 组件会自动检测快速输入（通过 `scan-interval` 参数控制），并立即触发 `scan-input` 和 `scan-complete` 事件。
 
 ### Q: 历史记录存储在哪里？
 A: 历史记录存储在浏览器的 localStorage 中，按条码类型分别存储。
 
-### Q: 如何修改防抖时间？
-A: 使用 `debounce-delay` 属性设置防抖延迟时间（毫秒）。
+### Q: 如何调整扫描识别速度？
+A: 使用 `scan-interval` 属性设置扫描间隔检测时间（毫秒），值越小对快速输入越敏感。
 
 ## 浏览器兼容性
 

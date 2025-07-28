@@ -108,10 +108,12 @@
       border-radius: 2px;
     }
     
-    .event-item.scan { background-color: #e1f3ff; }
-    .event-item.copy { background-color: #fff2e8; }
-    .event-item.history { background-color: #f0f9ff; }
-    .event-item.clear { background-color: #fef0f0; }
+         .event-item.scan { background-color: #e1f3ff; }
+     .event-item.copy { background-color: #fff2e8; }
+     .event-item.history { background-color: #f0f9ff; }
+     .event-item.clear { background-color: #fef0f0; }
+     .event-item.duplicate { background-color: #fff0f6; }
+     .event-item.test { background-color: #f6ffed; }
     
     .stats-grid {
       display: grid;
@@ -269,22 +271,69 @@
             </el-button-group>
           </el-col>
           
-          <el-col :span="12">
-            <h4>历史记录管理</h4>
-            <el-barcode-input
-              v-model="advancedForm.historyCode"
-              barcode-type="cell"
-              :max-history="5"
-              placeholder="输入后会自动保存到历史"
-              @history-select="logEvent('history', '选择历史记录', $event)"
-              @history-add="logEvent('history', '添加到历史', $event)"
-              @history-clear="logEvent('history', '清空历史记录')"
-            />
-          </el-col>
+                     <el-col :span="12">
+             <h4>历史记录管理</h4>
+             <el-barcode-input
+               v-model="advancedForm.historyCode"
+               barcode-type="cell"
+               :max-history="5"
+               placeholder="输入后按回车保存到历史"
+               @history-select="logEvent('history', '选择历史记录', $event)"
+               @history-add="logEvent('history', '添加到历史', $event)"
+               @history-clear="logEvent('history', '清空历史记录')"
+             />
+             <p style="font-size: 12px; color: #909399; margin-top: 5px;">
+               提示：输入有效条码后按 Enter 键添加到历史记录
+             </p>
+           </el-col>
         </el-row>
-      </div>
-      
-      <!-- 功能控制 -->
+              </div>
+        
+        <!-- 重复扫描检测演示 -->
+        <div class="demo-section">
+          <h2 class="demo-subtitle">重复扫描检测</h2>
+          
+          <el-row :gutter="20">
+            <el-col :span="16">
+              <h4>重复扫描测试</h4>
+              <el-barcode-input
+                v-model="duplicateForm.testCode"
+                barcode-type="package"
+                :check-duplicate="duplicateSettings.enabled"
+                :duplicate-interval="duplicateSettings.interval"
+                placeholder="扫描同一条码测试重复检测"
+                @scan-complete="logEvent('scan', '扫描完成', $event)"
+                @duplicate-scan="handleDuplicateScan"
+              />
+              <p style="font-size: 12px; color: #909399; margin-top: 5px;">
+                提示：快速输入相同条码或在{{duplicateSettings.interval/1000}}秒内重复扫描同一条码会触发重复警告
+              </p>
+            </el-col>
+            
+            <el-col :span="8">
+              <h4>检测设置</h4>
+              <el-form size="mini">
+                <el-form-item label="启用重复检测">
+                  <el-switch v-model="duplicateSettings.enabled"></el-switch>
+                </el-form-item>
+                <el-form-item label="检测间隔(秒)">
+                  <el-input-number 
+                    v-model="duplicateSettings.intervalSeconds" 
+                    :min="1" 
+                    :max="60"
+                    @change="duplicateSettings.interval = duplicateSettings.intervalSeconds * 1000">
+                  </el-input-number>
+                </el-form-item>
+              </el-form>
+              
+              <el-button @click="testDuplicate" type="primary" size="mini" style="margin-top: 10px;">
+                模拟重复扫描
+              </el-button>
+            </el-col>
+          </el-row>
+        </div>
+        
+        <!-- 功能控制 -->
       <div class="demo-section">
         <h2 class="demo-subtitle">功能控制</h2>
         
@@ -449,20 +498,23 @@
         readonly: Boolean,
         clearable: { type: Boolean, default: true },
         showCopy: { type: Boolean, default: true },
-        showHistory: { type: Boolean, default: true },
-        showHelp: { type: Boolean, default: true },
-        showCharCount: { type: Boolean, default: true },
-                 autofocus: Boolean,
+                 showHistory: { type: Boolean, default: true },
+         showHelp: { type: Boolean, default: true },
+         showCharCount: { type: Boolean, default: true },
+         autofocus: Boolean,
          size: String,
          scanInterval: { type: Number, default: 50 },
-        maxHistory: { type: Number, default: 10 }
+         maxHistory: { type: Number, default: 10 },
+         checkDuplicate: { type: Boolean, default: true },
+         duplicateInterval: { type: Number, default: 3000 }
       },
       data() {
         return {
-          focused: false,
-          historyList: [],
-          showHistoryDropdown: false,
-          lastInputTime: 0,
+                     focused: false,
+           historyList: [],
+           showHistoryDropdown: false,
+           lastInputTime: 0,
+           recentScans: [],
           BARCODE_RULES: {
             package: {
               name: '包体码',
@@ -555,8 +607,13 @@
              this.$emit('scan-input', value);
              // 立即处理扫描完成
              if (this.isValid) {
-               this.addToHistory(value);
-               this.$emit('scan-complete', value);
+               const isDuplicate = this.checkForDuplicate(value);
+               if (!isDuplicate) {
+                 this.addToHistory(value);
+                 this.$emit('scan-complete', value);
+               } else {
+                 this.$emit('duplicate-scan', value);
+               }
              }
            }
           
@@ -603,15 +660,52 @@
           this.$refs.input.focus();
           this.$emit('history-select', value);
         },
-        addToHistory(value) {
-          if (!value || this.historyList.includes(value)) return;
-          this.historyList.unshift(value);
-          if (this.historyList.length > this.maxHistory) {
-            this.historyList = this.historyList.slice(0, this.maxHistory);
-          }
-          this.saveHistory();
-          this.$emit('history-add', value);
-        },
+                 addToHistory(value) {
+           if (!value || this.historyList.includes(value)) return;
+           this.historyList.unshift(value);
+           if (this.historyList.length > this.maxHistory) {
+             this.historyList = this.historyList.slice(0, this.maxHistory);
+           }
+           this.saveHistory();
+           this.recordScan(value);
+           this.$emit('history-add', value);
+         },
+         recordScan(value) {
+           const now = Date.now();
+           this.recentScans.unshift({
+             value: value,
+             timestamp: now
+           });
+           
+           // 清理超出时间间隔的记录
+           this.recentScans = this.recentScans.filter(scan => 
+             now - scan.timestamp < this.duplicateInterval
+           );
+         },
+         checkForDuplicate(value) {
+           if (!this.checkDuplicate) return false;
+           
+           const now = Date.now();
+           
+           // 检查最近扫描记录中是否有重复
+           const duplicateFound = this.recentScans.some(scan => 
+             scan.value === value && (now - scan.timestamp) < this.duplicateInterval
+           );
+           
+           if (duplicateFound) {
+             const lastScanTime = this.recentScans.find(scan => scan.value === value)?.timestamp;
+             const timeDiff = Math.round((now - lastScanTime) / 1000);
+             
+             this.$message.warning({
+               message: `检测到重复扫描！上次扫描时间：${timeDiff}秒前`,
+               duration: 3000
+             });
+             
+             return true;
+           }
+           
+           return false;
+         },
         clearHistory() {
           this.historyList = [];
           this.saveHistory();
@@ -666,19 +760,27 @@
           customerCode: '',
           customCode: ''
         },
-        advancedForm: {
-          scanCode: '',
-          historyCode: ''
-        },
-        controlForm: {
-          testCode: ''
-        },
-        controlSettings: {
-          showCopy: true,
-          showHistory: true,
-          showHelp: true,
-          showCharCount: true
-        },
+                 advancedForm: {
+           scanCode: '',
+           historyCode: ''
+         },
+         duplicateForm: {
+           testCode: ''
+         },
+         controlForm: {
+           testCode: ''
+         },
+                 controlSettings: {
+           showCopy: true,
+           showHistory: true,
+           showHelp: true,
+           showCharCount: true
+         },
+         duplicateSettings: {
+           enabled: true,
+           interval: 3000,
+           intervalSeconds: 3
+         },
         customRule: {
           name: '序列号码',
           pattern: /^SN[0-9]{10}$/,
@@ -788,17 +890,35 @@
           this.multiForm.customCode = 'SN12';
           this.logEvent('scan', '设置部分输入');
         },
-        clearAllCodes() {
-          this.basicForm.packageCode = '';
-          this.multiForm.cellCode = '';
-          this.multiForm.moduleCode = '';
-          this.multiForm.customerCode = '';
-          this.multiForm.customCode = '';
-          this.advancedForm.scanCode = '';
-          this.advancedForm.historyCode = '';
-          this.controlForm.testCode = '';
-          this.logEvent('clear', '清空所有条码');
-        }
+                 clearAllCodes() {
+           this.basicForm.packageCode = '';
+           this.multiForm.cellCode = '';
+           this.multiForm.moduleCode = '';
+           this.multiForm.customerCode = '';
+           this.multiForm.customCode = '';
+           this.advancedForm.scanCode = '';
+           this.advancedForm.historyCode = '';
+           this.duplicateForm.testCode = '';
+           this.controlForm.testCode = '';
+           this.logEvent('clear', '清空所有条码');
+         },
+         handleDuplicateScan(data) {
+           this.logEvent('duplicate', '检测到重复扫描', data.value || data);
+         },
+         testDuplicate() {
+           const testCode = 'ABCD12342312001';
+           this.duplicateForm.testCode = testCode;
+           this.logEvent('test', '设置测试条码', testCode);
+           
+           // 1秒后再次设置相同的条码，模拟重复扫描
+           setTimeout(() => {
+             this.duplicateForm.testCode = '';
+             setTimeout(() => {
+               this.duplicateForm.testCode = testCode;
+               this.logEvent('test', '模拟重复扫描', testCode);
+             }, 100);
+           }, 1000);
+         }
       }
     });
   </script>

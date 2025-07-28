@@ -218,7 +218,9 @@
         currentValue: this.value || '',
         historyList: [],
         showHistoryDropdown: false,
-        lastScanTime: 0
+        lastScanTime: 0,
+        lastScanValue: '',
+        recentScans: [] // 存储最近扫描的记录用于重复检测
       };
     },
 
@@ -311,6 +313,16 @@
       customRule: {
         type: Object,
         default: null
+      },
+      // 是否检测重复扫描
+      checkDuplicate: {
+        type: Boolean,
+        default: true
+      },
+      // 重复扫描检测时间间隔(ms)
+      duplicateInterval: {
+        type: Number,
+        default: 3000
       }
     },
 
@@ -498,36 +510,57 @@
           
           // 立即处理扫描完成
           if (this.isValid) {
-            this.addToHistory(value);
-            this.$emit('scan-complete', value);
+            const isDuplicate = this.checkForDuplicate(value);
+            if (!isDuplicate) {
+              this.addToHistory(value);
+              this.$emit('scan-complete', value);
+            } else {
+              this.$emit('scan-duplicate', value);
+            }
           }
         },
       handleChange(event) {
         this.$emit('change', event.target.value);
       },
-      handleKeydown(event) {
-        // Ctrl+A 全选
-        if (event.ctrlKey && event.key === 'a') {
-          this.select();
-          event.preventDefault();
-          return;
-        }
-        
-        // Ctrl+C 复制
-        if (event.ctrlKey && event.key === 'c' && this.currentValue) {
-          this.handleCopy();
-          return;
-        }
-        
-        // Escape 清空
-        if (event.key === 'Escape') {
-          this.clear();
-          event.preventDefault();
-          return;
-        }
-        
-        this.$emit('keydown', event);
-      },
+              handleKeydown(event) {
+          // Enter 添加到历史记录
+          if (event.key === 'Enter' && this.currentValue) {
+            if (this.isValid) {
+              const isDuplicate = this.checkForDuplicate(this.currentValue);
+              if (!isDuplicate) {
+                this.addToHistory(this.currentValue);
+                this.$emit('history-add', this.currentValue);
+                this.$message.success('已添加到历史记录');
+              }
+            } else {
+              this.$message.warning('条码格式不正确，无法添加到历史记录');
+            }
+            event.preventDefault();
+            return;
+          }
+          
+          // Ctrl+A 全选
+          if (event.ctrlKey && event.key === 'a') {
+            this.select();
+            event.preventDefault();
+            return;
+          }
+          
+          // Ctrl+C 复制
+          if (event.ctrlKey && event.key === 'c' && this.currentValue) {
+            this.handleCopy();
+            return;
+          }
+          
+          // Escape 清空
+          if (event.key === 'Escape') {
+            this.clear();
+            event.preventDefault();
+            return;
+          }
+          
+          this.$emit('keydown', event);
+        },
       clear() {
         this.currentValue = '';
         this.$emit('input', '');
@@ -564,17 +597,64 @@
         this.focus();
         this.$emit('history-select', value);
       },
-      addToHistory(value) {
-        if (!value || this.historyList.includes(value)) return;
-        
-        this.historyList.unshift(value);
-        if (this.historyList.length > this.maxHistory) {
-          this.historyList = this.historyList.slice(0, this.maxHistory);
-        }
-        
-        this.saveHistory();
-        this.$emit('history-add', value);
-      },
+              addToHistory(value) {
+          if (!value || this.historyList.includes(value)) return;
+          
+          this.historyList.unshift(value);
+          if (this.historyList.length > this.maxHistory) {
+            this.historyList = this.historyList.slice(0, this.maxHistory);
+          }
+          
+          this.saveHistory();
+          
+          // 记录扫描时间用于重复检测
+          this.recordScan(value);
+        },
+        recordScan(value) {
+          const now = Date.now();
+          this.recentScans.unshift({
+            value: value,
+            timestamp: now
+          });
+          
+          // 清理超出时间间隔的记录
+          this.recentScans = this.recentScans.filter(scan => 
+            now - scan.timestamp < this.duplicateInterval
+          );
+          
+          this.lastScanValue = value;
+          this.lastScanTime = now;
+        },
+        checkForDuplicate(value) {
+          if (!this.checkDuplicate) return false;
+          
+          const now = Date.now();
+          
+          // 检查最近扫描记录中是否有重复
+          const duplicateFound = this.recentScans.some(scan => 
+            scan.value === value && (now - scan.timestamp) < this.duplicateInterval
+          );
+          
+          if (duplicateFound) {
+            const lastScanTime = this.recentScans.find(scan => scan.value === value)?.timestamp;
+            const timeDiff = Math.round((now - lastScanTime) / 1000);
+            
+            this.$message.warning({
+              message: `检测到重复扫描！上次扫描时间：${timeDiff}秒前`,
+              duration: 3000
+            });
+            
+            this.$emit('duplicate-scan', {
+              value: value,
+              lastScanTime: lastScanTime,
+              timeDiff: timeDiff
+            });
+            
+            return true;
+          }
+          
+          return false;
+        },
       clearHistory() {
         this.historyList = [];
         this.saveHistory();

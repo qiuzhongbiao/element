@@ -223,6 +223,8 @@ export default {
 - `show-char-count`: 显示字符计数
 - `scan-interval`: 扫描间隔检测
 - `max-history`: 历史记录最大条数
+- `check-duplicate`: 是否检测重复扫描
+- `duplicate-interval`: 重复扫描检测时间间隔
 
 ### 继承属性
 完全支持 Element UI Input 的所有属性，如：
@@ -242,6 +244,7 @@ export default {
 - `history-select`: 选择历史记录
 - `history-add`: 添加历史记录
 - `history-clear`: 清空历史记录
+- `duplicate-scan`: 检测到重复扫描
 - `validation`: 验证状态改变
 
 ### 继承事件

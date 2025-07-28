@@ -181,6 +181,40 @@ export default {
 </script>
 ```
 
+### 重复扫描检测
+
+```vue
+<template>
+  <el-barcode-input
+    v-model="barcode"
+    barcode-type="package"
+    :check-duplicate="true"
+    :duplicate-interval="5000"
+    @scan-complete="handleScanComplete"
+    @duplicate-scan="handleDuplicateScan"
+  />
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      barcode: ''
+    };
+  },
+  methods: {
+    handleScanComplete(value) {
+      console.log('扫描完成:', value);
+    },
+    handleDuplicateScan(data) {
+      console.log('重复扫描:', data);
+      // data: {value, lastScanTime, timeDiff}
+    }
+  }
+};
+</script>
+```
+
 ## Attributes
 
 | 参数 | 说明 | 类型 | 可选值 | 默认值 |
@@ -195,6 +229,8 @@ export default {
 | show-char-count | 显示字符计数 | boolean | — | true |
 | scan-interval | 扫描间隔检测(ms) | number | — | 50 |
 | max-history | 历史记录最大条数 | number | — | 10 |
+| check-duplicate | 是否检测重复扫描 | boolean | — | true |
+| duplicate-interval | 重复扫描检测时间间隔(ms) | number | — | 3000 |
 
 ### 继承的 Input Attributes
 
@@ -228,6 +264,7 @@ export default {
 | history-select | 选择历史记录时触发 | (value: string) |
 | history-add | 添加历史记录时触发 | (value: string) |
 | history-clear | 清空历史记录时触发 | — |
+| duplicate-scan | 检测到重复扫描时触发 | (data: {value: string, lastScanTime: number, timeDiff: number}) |
 | validation | 验证状态改变时触发 | (isValid: boolean, value: string) |
 
 ### 继承的 Input Events
@@ -303,6 +340,12 @@ A: 历史记录存储在浏览器的 localStorage 中，按条码类型分别存
 
 ### Q: 如何调整扫描识别速度？
 A: 使用 `scan-interval` 属性设置扫描间隔检测时间（毫秒），值越小对快速输入越敏感。
+
+### Q: 如何使用历史记录功能？
+A: 输入有效条码后按 Enter 键添加到历史记录，或通过扫码自动添加。可设置 `:max-history="20"` 调整最大记录数。
+
+### Q: 如何配置重复扫描检测？
+A: 使用 `:check-duplicate="true"` 启用检测，`:duplicate-interval="5000"` 设置检测间隔（毫秒）。
 
 ## 浏览器兼容性
 

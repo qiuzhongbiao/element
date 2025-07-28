@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>条码输入框测试</title>
+  <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.1/lib/theme-chalk/index.css">
+  <style>
+    body {
+      padding: 20px;
+      font-family: Arial, sans-serif;
+    }
+    .test-section {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #ebeef5;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>条码输入框组件测试</h1>
+    
+    <div class="test-section">
+      <h3>基础测试</h3>
+      <p>测试条码输入框的基本功能</p>
+      <el-barcode-input
+        v-model="testValue"
+        barcode-type="package"
+        placeholder="请输入包体码"
+        @scan-complete="handleScanComplete"
+        @copy="handleCopy"
+      />
+      <p>当前值: {{ testValue }}</p>
+    </div>
+    
+    <div class="test-section">
+      <h3>功能测试</h3>
+      <el-button @click="setValue" type="primary">设置测试值</el-button>
+      <el-button @click="clearValue" type="warning">清空</el-button>
+    </div>
+    
+    <div class="test-section">
+      <h3>事件日志</h3>
+      <div v-for="(log, index) in eventLogs" :key="index" style="font-family: monospace; font-size: 12px;">
+        {{ log }}
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui@2.15.1/lib/index.js"></script>
+  
+  <script>
+    // 简化的条码输入框组件
+    Vue.component('el-barcode-input', {
+      template: `
+        <div class="el-barcode-input" style="position: relative;">
+          <input 
+            ref="input"
+            class="el-input__inner"
+            :value="value"
+            :placeholder="placeholder"
+            @input="handleInput"
+            @focus="handleFocus"
+            @blur="handleBlur"
+            :style="{ 
+              borderColor: getBorderColor(),
+              transition: 'border-color 0.2s',
+              padding: '12px 40px 12px 15px',
+              border: '1px solid #dcdfe6',
+              borderRadius: '4px',
+              fontSize: '14px',
+              width: '100%',
+              boxSizing: 'border-box'
+            }"
+          />
+          <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; gap: 5px;">
+            <i v-if="showCopy && value" class="el-icon-document-copy" @click="handleCopy" style="cursor: pointer;" title="复制"></i>
+            <i v-if="clearable && value" class="el-icon-circle-close" @click="clear" style="cursor: pointer;" title="清空"></i>
+          </span>
+        </div>
+      `,
+      props: {
+        value: [String, Number],
+        barcodeType: { type: String, default: 'package' },
+        placeholder: String,
+        showCopy: { type: Boolean, default: true },
+        clearable: { type: Boolean, default: true }
+      },
+      data() {
+        return {
+          focused: false
+        };
+      },
+      computed: {
+        isValid() {
+          if (!this.value) return true;
+          // 包体码验证
+          return /^[A-Z0-9]{16}$/.test(this.value);
+        }
+      },
+      methods: {
+        handleInput(event) {
+          this.$emit('input', event.target.value);
+          
+          // 简单的扫码检测（如果值长度达到16位且有效，触发扫码完成）
+          if (event.target.value.length === 16 && this.isValid) {
+            this.$emit('scan-complete', event.target.value);
+          }
+        },
+        handleFocus() {
+          this.focused = true;
+        },
+        handleBlur() {
+          this.focused = false;
+        },
+        clear() {
+          this.$emit('input', '');
+        },
+        async handleCopy() {
+          if (!this.value) return;
+          try {
+            await navigator.clipboard.writeText(this.value);
+            this.$message.success('复制成功');
+            this.$emit('copy', this.value);
+          } catch (err) {
+            this.$message.error('复制失败');
+          }
+        },
+        getBorderColor() {
+          if (this.focused) return '#409EFF';
+          if (!this.value) return '#DCDFE6';
+          return this.isValid ? '#67C23A' : '#F56C6C';
+        }
+      }
+    });
+
+    new Vue({
+      el: '#app',
+      data: {
+        testValue: '',
+        eventLogs: []
+      },
+      methods: {
+        handleScanComplete(value) {
+          this.addLog(`扫码完成: ${value}`);
+          this.$message.success(`扫码完成: ${value}`);
+        },
+        handleCopy(value) {
+          this.addLog(`复制: ${value}`);
+        },
+        setValue() {
+          this.testValue = 'ABCD12342312001';
+          this.addLog('设置测试值: ABCD12342312001');
+        },
+        clearValue() {
+          this.testValue = '';
+          this.addLog('清空值');
+        },
+        addLog(message) {
+          const time = new Date().toLocaleTimeString();
+          this.eventLogs.unshift(`[${time}] ${message}`);
+          if (this.eventLogs.length > 10) {
+            this.eventLogs = this.eventLogs.slice(0, 10);
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
